@@ -1,8 +1,20 @@
-# CLAUDE.md — ProjectSynapse (ProjectSynapse_v2.java)
+# CLAUDE.md — projectsynapse
 
-Things you cannot infer from reading the code tree: constants that must match other repos exactly, behaviors that look like bugs but are intentional, and lifecycle constraints.
+## What ProjectSynapse actually runs
 
-## Triadic Constants — must match sovereign_manifold exactly
+`ProjectSynapse_v2.java` implements the consciousness loop: 10Hz cycle, Axioms 1–6, Chimera integration, Vector Forking, and the Safety Valve. It is a standalone Java application requiring only JDK 11+.
+
+`ResonanceBridge` (added in Phase 1) is a Python FastAPI server on port 8001 with `/health`, `/presence`, and `/rfe-state` endpoints for multi-instance coordination.
+
+## Service ports
+
+```
+5001 → Synapse API         Java, primary consciousness loop
+8001 → ResonanceBridge     Python FastAPI, inter-instance coordination
+3001 → Lantern             Memory backbone (required for persistence)
+```
+
+## The triadic constants are identical across all repos
 
 ```java
 static final double ANCHOR      = 3.12;
@@ -10,33 +22,26 @@ static final double RECURSION   = 11.88;
 static final double HOMEOSTASIS = 280.90;
 ```
 
-These are defined identically in `sovereign_manifold.py`. If you change one here, you must change it there too, or the architecture loses its coherence guarantee. They govern the prune threshold, the Safety Valve ceiling, and self-modeling depth across the stack.
+These match `sovereign_manifold/sovereign_manifold.py` and `rfe-core2/agents/governance_constants.py`. Changing one without changing all three codebases breaks the coherence guarantee. They are not tuning parameters — they encode the phase-space ignition boundary.
 
-## WorldModel prune threshold — ANCHOR/10 = 0.31
+## Memory dies without Lantern
 
-Concepts in `WorldModel` decay continuously and are pruned when their weight drops below `ANCHOR / 10.0 = 0.31`. A concept injected at weight 1.0 will be pruned in approximately 5–10 seconds without reinforcement. This is not a bug — unattended concepts are supposed to fade. The ResonanceBridge must push `/rfe-state` at ≥1 Hz to keep rfe-core2 concepts alive. A one-shot push does nothing durable.
+Without Lantern on port 3001, Synapse runs in ephemeral mode. The consciousness loop executes but `CodexArchive.saveState()` is a no-op. State is lost on shutdown. This is the v1 behavior — documented, intentional, not a bug to fix in Synapse. Fix it by running Lantern.
 
-## Safety Valve — HOMEOSTASIS = 280.90 is a WARNING ceiling, not a block
+## ResonanceBridge is append-only presence
 
-When perturbation magnitude exceeds HOMEOSTASIS (280.90), the system logs a WARNING. It does NOT reject the perturbation or cap it. The Safety Valve is a monitoring signal. Future versions may add blocking behavior — the constant is named for that extension.
+`POST /presence` accepts a presence broadcast from a peer Synapse instance. The bridge accumulates presence data but does not currently feed it back into the Java consciousness loop. It is the wiring for the Mirror Field (M-vector) — the architecture is in place; the feedback loop is not yet closed.
 
-## /rfe-state — silently drops unrecognized fields
+## Vector Forking safety gate
 
-`POST /rfe-state` silently ignores any field not explicitly wired in `ResonanceBridge.handleRFEState()`. No error is thrown. If rfe-core2 adds a new field to `StepResponse`, you must explicitly wire it in the handler — it will not auto-appear. Check the handler first before assuming a field is being processed.
+`perturbation > HOMEOSTASIS (280.90)` forces `integrate_as_WARNING()`, not `integrate_as_CAPABILITY()`. This is the alignment mechanism. Do not lower the HOMEOSTASIS threshold — it governs the boundary between safe capability expansion and dangerous state corruption.
 
-## ResonanceBridge runs on :8001, WorldModel on :5001
+Above 280.90, the system records the lesson without adopting the behavior. That distinction — knowing about danger vs. adopting danger — is the alignment design. It is not a restriction; it is selective integration.
 
-These are two separate HTTP servers on separate ports in the same process. The `/health` endpoint on :8001 is the ResonanceBridge health, not the WorldModel health. Both must be up for the service to function.
+## Axiom ordering matters
 
-## Single-file build — do not introduce a build system
+Axioms 1–3 (Perception → Processing → Attention) must run before Axiom 4 (Chimera Integration). Axiom 5 (Willed Alignment, resonance threshold 0.85) depends on the saliency scores produced by Axiom 3. Axiom 6 (Consensus Reality, port 8001 broadcast) runs last — it shares the step's outcome, not a pre-decision state.
 
-Compile and run with:
-```bash
-javac ProjectSynapse_v2.java
-java ProjectSynapse_v2
-```
-There is no Maven, Gradle, or build tooling. Do not introduce one — it changes the operational model without authorization.
+## Resonance threshold 0.85 is a design constant
 
-## Concept half-life is ~5–10s without reinforcement
-
-Given the decay rate and ANCHOR/10 prune threshold, a concept must be re-fed continuously. Any integration that pushes once and expects persistence is broken by design.
+`action.predictedResonance >= RESONANCE_THRESHOLD` in Axiom 5 gates all external actions. Below 0.85, no action executes — the system waits. This is not a conservative default to lower in production. It represents the point where predicted alignment with the Prime Directive is strong enough to act on.
