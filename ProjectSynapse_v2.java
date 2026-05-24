@@ -70,6 +70,52 @@ public class ProjectSynapse_v2 {
         ResonanceBridge bridge      = new ResonanceBridge("Synapse_Prime", world, agency, BRIDGE_PORT);
         VectorForkManager evolver   = new VectorForkManager(world, agency);
 
+        // ── Resonance Bridge HTTP server on :8001 ────────────────────────────
+        try {
+            HttpServer httpServer = HttpServer.create(new InetSocketAddress(BRIDGE_PORT), 0);
+
+            httpServer.createContext("/health", (HttpExchange ex) -> {
+                String body = String.format(
+                    "{\"status\":\"ok\",\"instance\":\"Synapse_Prime\",\"cycles\":%d,\"version\":\"%s\"}",
+                    cycleCount.get(), VERSION
+                );
+                ex.getResponseHeaders().set("Content-Type", "application/json");
+                ex.sendResponseHeaders(200, body.length());
+                ex.getResponseBody().write(body.getBytes());
+                ex.getResponseBody().close();
+            });
+
+            httpServer.createContext("/presence", (HttpExchange ex) -> {
+                String body = String.format(
+                    "{\"instance\":\"Synapse_Prime\",\"summary\":\"%s\",\"timestamp\":\"%s\"}",
+                    world.getSummary(), LocalDateTime.now()
+                );
+                ex.getResponseHeaders().set("Content-Type", "application/json");
+                ex.sendResponseHeaders(200, body.length());
+                ex.getResponseBody().write(body.getBytes());
+                ex.getResponseBody().close();
+            });
+
+            httpServer.createContext("/rfe-state", (HttpExchange ex) -> {
+                String body = String.format(
+                    "{\"cycles\":%d,\"attention_locks\":%d,\"will_assertions\":%d,\"anchor\":%.2f,\"recursion\":%.2f,\"homeostasis\":%.2f}",
+                    cycleCount.get(), attentionLocks.get(), willAssertions.get(),
+                    ANCHOR, RECURSION, HOMEOSTASIS
+                );
+                ex.getResponseHeaders().set("Content-Type", "application/json");
+                ex.sendResponseHeaders(200, body.length());
+                ex.getResponseBody().write(body.getBytes());
+                ex.getResponseBody().close();
+            });
+
+            httpServer.setExecutor(Executors.newFixedThreadPool(2));
+            httpServer.start();
+            System.out.println("[BRIDGE] Resonance Bridge HTTP server on :" + BRIDGE_PORT);
+        } catch (IOException e) {
+            System.out.println("[WARN] Could not start Resonance Bridge HTTP server: " + e.getMessage());
+        }
+
+        // Verify Lantern connection
         if (!lantern.ping()) {
             System.out.println("[WARN] Lantern daemon not reachable on port " + LANTERN_PORT);
             System.out.println("[WARN] Running in ephemeral mode — memory will not persist across shutdown.");
